@@ -7,6 +7,7 @@ https://mulan.pro
 import logging
 import os
 import sys
+import traceback
 
 import requests
 
@@ -147,7 +148,7 @@ def main():
             # 2. 获取项目列表（取最后一个项目）
             projects = get_projects(token)
             if not projects:
-                logger.warning("暂无项目，跳过签到任务")
+                logger.info("暂无项目，跳过签到任务")
                 success_count += 1
                 continue
 
@@ -160,7 +161,7 @@ def main():
             flow_data = get_flow_info(token, project_id)
             workflows = flow_data.get("workflows", [])
             if not workflows:
-                logger.warning("工作流为空，跳过签到任务")
+                logger.info("工作流为空，跳过签到任务")
                 success_count += 1
                 continue
 
@@ -172,7 +173,7 @@ def main():
                     break
 
             if not run_task:
-                logger.warning("未找到可执行任务，跳过签到任务")
+                logger.info("未找到可执行任务，跳过签到任务")
                 success_count += 1
                 continue
 
@@ -182,8 +183,8 @@ def main():
             logger.info("执行生图任务成功")
 
             success_count += 1
-        except Exception as e:
-            logger.error(f"账号 {email} 签到失败: {e}")
+        except Exception:
+            logger.error(f"账号 {email} 签到失败: {traceback.format_exc()}")
             continue
         logger.info("=" * 40)
 
