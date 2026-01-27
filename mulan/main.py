@@ -91,7 +91,8 @@ def get_projects(token):
     response.raise_for_status()
 
     result = response.json()
-    projects = result.get("data", [])
+    data = result.get("data", {})
+    projects = data.get("items", [])
     return projects
 
 
@@ -119,7 +120,7 @@ def run_workflow(token, task_data):
     response.raise_for_status()
 
     result = response.json()
-    return result.get("data", {})
+    return result
 
 
 def main():
@@ -153,7 +154,7 @@ def main():
                 continue
 
             last_project = projects[-1]
-            project_id = last_project.get("id")
+            project_id = last_project.get("short_url_id")
             project_name = last_project.get("name", "未命名")
             logger.info(f"获取到项目: {project_name} (ID: {project_id})")
 
@@ -179,8 +180,8 @@ def main():
 
             # 4. 执行任务
             logger.info("开始执行生图任务...")
-            run_workflow(token, run_task)
-            logger.info("执行生图任务成功")
+            result = run_workflow(token, run_task)
+            logger.info(f"执行生图任务结果：{result}")
 
             success_count += 1
         except Exception:
