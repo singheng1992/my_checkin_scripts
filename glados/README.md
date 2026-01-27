@@ -6,3 +6,5 @@
 
 ## 参考
 https://github.com/Devilstore/Gladoscheckin
+
+https://github.com/chinesedfan/daily-checkin-bot
