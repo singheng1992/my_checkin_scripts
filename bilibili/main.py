@@ -1,0 +1,337 @@
+import logging
+import os
+import sys
+
+import requests
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+IGNORE_FAIL_KEYWORDS = ["未配置", "跳过", "已下线"]
+
+
+class BilibiliTask:
+    def __init__(self, cookie):
+        self.cookie = cookie
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://www.bilibili.com/",
+            "Cookie": cookie,
+        }
+        self.csrf = self._get_csrf()
+
+    def _get_csrf(self):
+        for item in self.cookie.split(";"):
+            if item.strip().startswith("bili_jct"):
+                return item.split("=")[1]
+        return None
+
+    def get_user_info(self):
+        url = "https://api.bilibili.com/x/web-interface/nav"
+        try:
+            res = requests.get(url, headers=self.headers)
+            res.raise_for_status()
+            data = res.json()
+            if data["code"] == 0:
+                return data["data"]
+            logger.warning(f"获取用户信息失败: {data.get('message')}")
+            return None
+        except Exception as e:
+            logger.error(f"请求用户信息API异常: {e}")
+            return None
+
+    def get_dynamic_videos(self):
+        url = "https://api.bilibili.com/x/web-interface/dynamic/region?ps=5&rid=1"
+        try:
+            res = requests.get(url, headers=self.headers)
+            res.raise_for_status()
+            data = res.json()
+            if data["code"] == 0:
+                return [
+                    video["bvid"] for video in data.get("data", {}).get("archives", [])
+                ]
+            return []
+        except Exception as e:
+            logger.error(f"请求动态视频API异常: {e}")
+            return []
+
+    def get_ranking_videos(self):
+        url = "https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all"
+        try:
+            res = requests.get(url, headers=self.headers)
+            res.raise_for_status()
+            data = res.json()
+            if data["code"] == 0:
+                return [video["bvid"] for video in data.get("data", {}).get("list", [])]
+            return []
+        except Exception as e:
+            logger.error(f"请求排行榜视频API异常: {e}")
+            return []
+
+    def check_video_coin_status(self, bvid):
+        url = f"https://api.bilibili.com/x/web-interface/archive/coins?bvid={bvid}"
+        try:
+            res = requests.get(url, headers=self.headers)
+            res.raise_for_status()
+            data = res.json()
+            if data["code"] == 0:
+                return data["data"]["multiply"] > 0
+            return False
+        except Exception:
+            return False
+
+    def add_coin(self, bvid, num=1, select_like=1):
+        if not self.csrf:
+            return False, "Bili_jct(csrf) 未找到"
+        url = "https://api.bilibili.com/x/web-interface/coin/add"
+        data = {
+            "bvid": bvid,
+            "multiply": num,
+            "select_like": select_like,
+            "csrf": self.csrf,
+        }
+        try:
+            res = requests.post(url, headers=self.headers, data=data)
+            data = res.json()
+            if data["code"] == 0:
+                return True, "投币成功"
+            return False, data.get("message", "投币失败")
+        except Exception as e:
+            return False, str(e)
+
+    def share_video(self, bvid):
+        if not self.csrf:
+            return False, "Bili_jct(csrf) 未找到"
+        url = "https://api.bilibili.com/x/web-interface/share/add"
+        data = {"bvid": bvid, "csrf": self.csrf}
+        try:
+            res = requests.post(url, headers=self.headers, data=data)
+            data = res.json()
+            if data["code"] == 0:
+                return True, "分享成功"
+            return False, data.get("message", "分享失败")
+        except Exception as e:
+            return False, str(e)
+
+    def watch_video(self, bvid):
+        url = "https://api.bilibili.com/x/click-interface/web/heartbeat"
+        data = {"bvid": bvid, "played_time": 30, "csrf": self.csrf}
+        try:
+            res = requests.post(url, headers=self.headers, data=data)
+            data = res.json()
+            if data["code"] == 0:
+                return True, "观看成功"
+            return False, data.get("message", "观看失败")
+        except Exception as e:
+            return False, str(e)
+
+    def live_sign(self):
+        url = "https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign"
+        try:
+            res = requests.get(url, headers=self.headers)
+            data = res.json()
+            if data["code"] == 0:
+                return True, data.get("data", {}).get("text", "直播签到成功")
+            return False, data.get("message", "直播签到失败")
+        except Exception as e:
+            return False, str(e)
+
+    def manga_sign(self):
+        url = "https://manga.bilibili.com/twirp/activity.v1.Activity/ClockIn"
+        try:
+            res = requests.post(url, headers=self.headers, data={"platform": "ios"})
+            data = res.json()
+            if data["code"] == 0:
+                return True, "漫画签到成功"
+            return False, data.get("message", "漫画签到失败")
+        except Exception as e:
+            return False, str(e)
+
+
+def mask_string(s: str) -> str:
+    if not isinstance(s, str) or len(s) == 0:
+        return "*"
+    return s[0] + "*" * (len(s) - 1)
+
+
+def mask_uid(uid: str) -> str:
+    uid_str = str(uid)
+    if len(uid_str) <= 2:
+        return uid_str[0] + "*"
+    return uid_str[:2] + "*" * (len(uid_str) - 2)
+
+
+def execute_coin_task(bili, user_info, config):
+    coins_to_add = int(config.get("COIN_ADD_NUM"))
+    if coins_to_add <= 0:
+        return True, "配置为0，跳过"
+
+    coin_balance = user_info.get("money", 0)
+    if coin_balance < 1:
+        return True, f"硬币不足({coin_balance})，跳过"
+
+    coins_to_add = min(coins_to_add, int(coin_balance), 5)
+
+    if config.get("COIN_VIDEO_SOURCE") == "ranking":
+        video_list = bili.get_ranking_videos()
+        logger.info("获取排行榜视频作为投币目标。")
+    else:
+        video_list = bili.get_dynamic_videos()
+        logger.info("获取动态视频作为投币目标。")
+
+    if not video_list:
+        return False, "无法获取视频列表"
+
+    added_coins = 0
+    for bvid in video_list:
+        if added_coins >= coins_to_add:
+            break
+
+        success, msg = bili.add_coin(bvid, 1, int(config.get("COIN_SELECT_LIKE")))
+        if success:
+            added_coins += 1
+            logger.info(f"为视频 {bvid} 投币成功。")
+        elif "已达到" in msg:
+            logger.warning("今日投币上限已满，终止投币。")
+            added_coins = config.get("COIN_ADD_NUM")
+            break
+        else:
+            logger.warning(f"为视频 {bvid} 投币失败: {msg}")
+            if "硬币不足" in msg:
+                break
+
+    return True, f"尝试投币，最终成功 {added_coins} 枚"
+
+
+def run_all_tasks_for_account(bili, config):
+    tasks_to_run = [
+        task.strip()
+        for task in config.get("TASK_CONFIG", "").split(",")
+        if task.strip()
+    ]
+    if not tasks_to_run:
+        tasks_to_run = ["live_sign", "manga_sign", "share_video", "add_coin"]
+
+    user_info = bili.get_user_info()
+    if not user_info:
+        return {"登录检查": (False, "Cookie失效或网络问题")}, None
+
+    masked_uname = mask_string(user_info.get("uname"))
+    logger.info(f"账号名称: {masked_uname}")
+    tasks_result = {}
+
+    video_list = bili.get_dynamic_videos()
+    bvid_for_task = video_list[0] if video_list else "BV1GJ411x7h7"
+
+    if "share_video" in tasks_to_run:
+        tasks_result["分享视频"] = bili.share_video(bvid_for_task)
+    if "live_sign" in tasks_to_run:
+        tasks_result["直播签到"] = bili.live_sign()
+    if "manga_sign" in tasks_to_run:
+        tasks_result["漫画签到"] = bili.manga_sign()
+    if "add_coin" in tasks_to_run:
+        tasks_result["投币任务"] = execute_coin_task(bili, user_info, config)
+
+    tasks_result["观看视频"] = bili.watch_video(bvid_for_task)
+
+    return tasks_result, user_info
+
+
+def main():
+    # ==================== 【核心修改点在这里】 ====================
+    # 我们先用 .get() 获取值，如果值是空字符串，就用 or 操作符来选择默认值。
+    # 这样既能处理"变量不存在"的情况，也能处理"变量存在但为空"的情况。
+    config = {
+        "BILIBILI_COOKIE": os.environ.get("BILIBILI_COOKIE"),
+        "TASK_CONFIG": os.environ.get("TASK_CONFIG")
+        or "live_sign,manga_sign,share_video,add_coin",
+        "COIN_ADD_NUM": os.environ.get("COIN_ADD_NUM") or "1",
+        "COIN_SELECT_LIKE": os.environ.get("COIN_SELECT_LIKE") or "1",
+        "COIN_VIDEO_SOURCE": os.environ.get("COIN_VIDEO_SOURCE") or "dynamic",
+    }
+    # ============================================================
+
+    if not config["BILIBILI_COOKIE"]:
+        logger.error("环境变量 BILIBILI_COOKIE 未设置，程序终止")
+        sys.exit(1)
+
+    cookies = [c.strip() for c in config["BILIBILI_COOKIE"].split("###") if c.strip()]
+    logger.info(f"检测到 {len(cookies)} 个账号，开始执行任务...")
+
+    all_results = []
+    any_failed = False  # 全局失败标志
+    for i, cookie in enumerate(cookies, 1):
+        masked_account_name = None
+        logger.info(f"=== 账号{i} 任务完成情况 ===")
+        bili = BilibiliTask(cookie)
+        tasks_result, user_info = run_all_tasks_for_account(bili, config)
+        final_user_info = bili.get_user_info() if user_info else None
+        all_results.append(
+            {"account_index": i, "tasks": tasks_result, "user_info": final_user_info}
+        )
+
+        # 账号任务成功标志
+        account_failed = False
+        valid_task_count = 0
+        valid_success_count = 0
+
+        # 任务日志输出
+        for task_name, (success, msg) in tasks_result.items():
+            if "push" in task_name or "推送" in task_name:
+                continue
+            level = logger.info if success else logger.error
+            masked_account_name = (
+                mask_string(final_user_info.get("uname"))
+                if final_user_info
+                else f"账号{i}"
+            )
+            if msg and any(k in msg for k in IGNORE_FAIL_KEYWORDS):
+                level(f"[账号{i}] {task_name}: 跳过，原因: {msg}")
+                continue  # 跳过统计
+            # 统计有效任务
+            valid_task_count += 1
+            if success:
+                valid_success_count += 1
+                level(f"[账号{i}] {task_name}: 成功")
+            else:
+                level(f"[账号{i}] {task_name}: 失败，原因: {msg}")
+
+        # 判断账号是否失败
+        if not user_info or valid_task_count == 0 or valid_success_count == 0:
+            account_failed = True
+
+        # 用户信息分段输出
+        logger.info(f"=== 账号{i} 用户信息 ===")
+        if final_user_info:
+            logger.info(f"用户名: {mask_string(final_user_info.get('uname'))}")
+            logger.info(f"UID: {mask_uid(final_user_info.get('mid'))}")
+            logger.info(
+                f"等级: {final_user_info.get('level_info', {}).get('current_level')}"
+            )
+            logger.info(
+                f"经验: {final_user_info.get('level_info', {}).get('current_exp')}"
+            )
+            logger.info(f"硬币: {final_user_info.get('money')}")
+        else:
+            logger.error("用户信息获取失败")
+        logger.info(f"--- 账号 {masked_account_name} 任务执行完毕 ---")
+        logger.info("-" * 40)
+
+        if account_failed:
+            any_failed = True
+
+    # 所有账号执行完毕，统一输出最终执行结果
+    if any_failed:
+        logger.error("有账号任务执行失败，整个任务失败！")
+        sys.exit(1)
+    else:
+        logger.info("所有账号任务全部成功！")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
