@@ -8,188 +8,252 @@ import logging
 import os
 import sys
 import traceback
+from typing import Any
 
 import requests
 
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
+# 环境变量
+ENV_ACCOUNTS = "MULAN_ACCOUNTS"
 
-def parse_accounts(accounts_str: str) -> list[tuple[str, str]]:
-    """解析账号列表字符串
+# API 配置
+LOGIN_URL = "https://api3.mulan.pro/api/auth/sign-in"
+USER_INFO_URL = "https://api3.mulan.pro/api/user/protected/userinfo/fresh"
+PROJECTS_URL = "https://api3.mulan.pro/api/studio_manager/projects/recents"
+FLOW_INFO_URL = "https://api3.mulan.pro/api/studio_manager/flow/{}/"
+WORKFLOW_RUN_URL = "https://api3.mulan.pro/api/manage/v1/workflows/run"
 
-    Args:
-        accounts_str: 账号字符串，格式: "email1:password1||email2:password2"
+# 请求头
+HEADERS = {"Content-Type": "application/json"}
 
-    Returns:
-        账号列表，每个元素为 (email, password) 元组
 
-    Raises:
-        SystemExit: 当账号格式不正确时退出程序
-    """
-    if not accounts_str:
-        logger.error("请设置 MULAN_ACCOUNTS 环境变量")
-        logger.error('格式: MULAN_ACCOUNTS="email1:password1||email2:password2"')
-        sys.exit(1)
+class Account:
+    """账号信息"""
 
-    accounts = []
-    for account in accounts_str.split("||"):
-        account = account.strip()
-        if ":" not in account:
-            logger.error(f"账号格式不正确: {account}")
-            logger.error("正确格式: email:password")
+    def __init__(self, email: str, password: str) -> None:
+        """初始化账号信息
+
+        Args:
+            email: 邮箱
+            password: 密码
+        """
+        self.email = email
+        self.password = password
+        self.token: str = ""
+
+    def __repr__(self) -> str:
+        return f"Account(email={self.email})"
+
+
+class MulanClient:
+    """木兰签到客户端"""
+
+    def __init__(self) -> None:
+        """初始化客户端"""
+        self.accounts: list[Account] = []
+
+    def load_accounts(self) -> None:
+        """从环境变量加载账号列表"""
+        accounts_str = os.environ.get(ENV_ACCOUNTS, "")
+        if not accounts_str:
+            logger.error(
+                f'请设置 {ENV_ACCOUNTS} 环境变量, 格式: {ENV_ACCOUNTS}="email1:password1||email2:password2"'
+            )
             sys.exit(1)
-        email, password = account.split(":", 1)
-        accounts.append((email.strip(), password.strip()))
 
-    return accounts
+        for account in accounts_str.split("||"):
+            account = account.strip()
+            if ":" not in account:
+                logger.error(f"账号格式不正确: {account}, 正确格式: email:password")
+                continue
+            email, password = account.split(":", 1)
+            self.accounts.append(Account(email.strip(), password.strip()))
+
+        logger.info(f"加载了 {len(self.accounts)} 个账号")
+
+    def login(self, account: Account) -> None:
+        """登录获取 token
+
+        Args:
+            account: 账号对象
+
+        Raises:
+            RuntimeError: 登录失败时抛出异常
+        """
+        response = requests.post(
+            LOGIN_URL,
+            json={"email": account.email, "password": account.password},
+            headers=HEADERS,
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        access_token = result.get("data", {}).get("access_token")
+
+        if not access_token:
+            raise RuntimeError(f"登录失败: {result}")
+
+        account.token = access_token
+
+    def get_user_info(self, token: str) -> dict[str, Any]:
+        """获取用户信息
+
+        Args:
+            token: 访问令牌
+
+        Returns:
+            用户信息字典
+        """
+        response = requests.get(
+            USER_INFO_URL,
+            headers={"authorization": f"Bearer {token}"},
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        return result.get("data", {})
+
+    def get_projects(self, token: str) -> list[dict[str, Any]]:
+        """获取项目列表
+
+        Args:
+            token: 访问令牌
+
+        Returns:
+            项目列表
+        """
+        response = requests.get(
+            PROJECTS_URL,
+            headers={"authorization": f"Bearer {token}"},
+            params={"limit": 999999, "offset": 0, "order_by": "create_at"},
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        data = result.get("data", {})
+        return data.get("items", [])
+
+    def get_flow_info(self, token: str, project_id: str) -> dict[str, Any]:
+        """获取项目工作流信息
+
+        Args:
+            token: 访问令牌
+            project_id: 项目 ID
+
+        Returns:
+            工作流信息字典
+        """
+        response = requests.get(
+            FLOW_INFO_URL.format(project_id),
+            headers={"authorization": f"Bearer {token}"},
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        return result.get("data", {})
+
+    def run_workflow(self, token: str, task_data: dict[str, Any]) -> dict[str, Any]:
+        """执行工作流任务
+
+        Args:
+            token: 访问令牌
+            task_data: 任务数据
+
+        Returns:
+            执行结果字典
+        """
+        response = requests.post(
+            WORKFLOW_RUN_URL,
+            json=task_data,
+            headers={
+                "authorization": f"Bearer {token}",
+                "content-type": "application/json",
+            },
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    def run(self) -> None:
+        """执行所有账号签到"""
+        self.load_accounts()
+
+        success_count = 0
+        for idx, account in enumerate(self.accounts, 1):
+            logger.info(
+                f"账号 [{idx}/{len(self.accounts)}]: {account.email}, 签到中..."
+            )
+
+            try:
+                # 登录
+                self.login(account)
+                logger.info(f"账号 {idx}: 登录成功")
+
+                # 获取用户信息
+                user_info = self.get_user_info(account.token)
+                nickname = user_info.get("nickname", "未知")
+                balance = user_info.get("balance", 0)
+                logger.info(f"账号 {idx}: 用户: {nickname}, 现有积分: {balance}")
+
+                # 注释掉的生图任务代码
+                # # 获取项目列表（取最后一个项目）
+                # projects = self.get_projects(account.token)
+                # if not projects:
+                #     logger.info("暂无项目，跳过签到任务")
+                #     success_count += 1
+                #     continue
+
+                # last_project = projects[-1]
+                # project_id = last_project.get("short_url_id")
+                # project_name = last_project.get("name", "未命名")
+                # logger.info(f"获取到项目: {project_name} (ID: {project_id})")
+
+                # # 获取工作流信息，提取任务参数
+                # flow_data = self.get_flow_info(account.token, project_id)
+                # workflows = flow_data.get("workflows", [])
+                # if not workflows:
+                #     logger.info("工作流为空，跳过签到任务")
+                #     success_count += 1
+                #     continue
+
+                # nodes = workflows[0].get("data", {}).get("nodes", [])
+                # run_task = None
+                # for node in nodes:
+                #     if node.get("data", {}).get("run_task"):
+                #         run_task = node["data"]["run_task"]
+                #         break
+
+                # if not run_task:
+                #     logger.info("未找到可执行任务，跳过签到任务")
+                #     success_count += 1
+                #     continue
+
+                # # 执行任务
+                # logger.info("开始执行生图任务...")
+                # result = self.run_workflow(account.token, run_task)
+                # logger.info(f"执行生图任务结果：{result}")
+
+                success_count += 1
+            except Exception:
+                logger.error(
+                    f"账号 {idx}: 签到失败, 错误信息: {traceback.format_exc()}"
+                )
+            finally:
+                logger.info("=" * 40)
+
+        logger.info(f"签到完成: 成功 {success_count}/{len(self.accounts)}")
 
 
-def login(email, password):
-    """登录获取 token"""
-    url = "https://api3.mulan.pro/api/auth/sign-in"
-    headers = {"Content-Type": "application/json"}
-    data = {"email": email, "password": password}
-
-    response = requests.post(url, json=data, headers=headers)
-    response.raise_for_status()
-
-    result = response.json()
-    access_token = result.get("data", {}).get("access_token")
-
-    if not access_token:
-        logger.error(f"登录失败: {result}")
-        sys.exit(1)
-
-    return access_token
-
-
-def get_user_info(token):
-    """获取用户信息"""
-    url = "https://api3.mulan.pro/api/user/protected/userinfo/fresh"
-    headers = {"authorization": f"Bearer {token}"}
-
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-
-    result = response.json()
-    return result.get("data", {})
-
-
-def get_projects(token):
-    """获取项目列表"""
-    url = "https://api3.mulan.pro/api/studio_manager/projects/recents"
-    headers = {"authorization": f"Bearer {token}"}
-    params = {"limit": 999999, "offset": 0, "order_by": "create_at"}
-
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-
-    result = response.json()
-    data = result.get("data", {})
-    projects = data.get("items", [])
-    return projects
-
-
-def get_flow_info(token, project_id):
-    """获取项目工作流信息"""
-    url = f"https://api3.mulan.pro/api/studio_manager/flow/{project_id}/"
-    headers = {"authorization": f"Bearer {token}"}
-
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-
-    result = response.json()
-    return result.get("data", {})
-
-
-def run_workflow(token, task_data):
-    """执行工作流任务"""
-    url = "https://api3.mulan.pro/api/manage/v1/workflows/run"
-    headers = {
-        "authorization": f"Bearer {token}",
-        "content-type": "application/json",
-    }
-
-    response = requests.post(url, json=task_data, headers=headers)
-    response.raise_for_status()
-
-    result = response.json()
-    return result
-
-
-def main():
-    # 从环境变量获取并解析账号列表
-    accounts_str = os.environ.get("MULAN_ACCOUNTS", "")
-    accounts = parse_accounts(accounts_str)
-
-    # 遍历所有账号
-    success_count = 0
-    for i, (email, password) in enumerate(accounts, 1):
-        logger.info(f"{'=' * 40}")
-        logger.info(f"账号 [{i}/{len(accounts)}]: {email}")
-
-        try:
-            # 登录获取 access_token
-            token = login(email, password)
-            logger.info("登录成功")
-
-            # 获取用户信息
-            user_info = get_user_info(token)
-            nickname = user_info.get("nickname", "未知")
-            balance = user_info.get("balance", 0)
-            free_balance = user_info.get("free_balance", 0)
-            logger.info(f"用户: {nickname}, 积分: {balance} (免费: {free_balance})")
-
-            # # 获取项目列表（取最后一个项目）
-            # projects = get_projects(token)
-            # if not projects:
-            #     logger.info("暂无项目，跳过签到任务")
-            #     success_count += 1
-            #     continue
-
-            # last_project = projects[-1]
-            # project_id = last_project.get("short_url_id")
-            # project_name = last_project.get("name", "未命名")
-            # logger.info(f"获取到项目: {project_name} (ID: {project_id})")
-
-            # # 获取工作流信息，提取任务参数
-            # flow_data = get_flow_info(token, project_id)
-            # workflows = flow_data.get("workflows", [])
-            # if not workflows:
-            #     logger.info("工作流为空，跳过签到任务")
-            #     success_count += 1
-            #     continue
-
-            # nodes = workflows[0].get("data", {}).get("nodes", [])
-            # run_task = None
-            # for node in nodes:
-            #     if node.get("data", {}).get("run_task"):
-            #         run_task = node["data"]["run_task"]
-            #         break
-
-            # if not run_task:
-            #     logger.info("未找到可执行任务，跳过签到任务")
-            #     success_count += 1
-            #     continue
-
-            # # 执行任务
-            # logger.info("开始执行生图任务...")
-            # result = run_workflow(token, run_task)
-            # logger.info(f"执行生图任务结果：{result}")
-
-            success_count += 1
-        except Exception:
-            logger.error(f"账号 {email} 签到失败: {traceback.format_exc()}")
-            continue
-        logger.info("=" * 40)
-
-    logger.info(f"签到完成: 成功 {success_count}/{len(accounts)}")
+def main() -> None:
+    """主函数"""
+    client = MulanClient()
+    client.run()
 
 
 if __name__ == "__main__":

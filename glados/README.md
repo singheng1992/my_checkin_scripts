@@ -6,7 +6,7 @@
 
 ## 本地调试
 ```
-export GLADOS_COOKIES="c1&c2"
+export GLADOS_COOKIES="c1||c2"
 python main.py
 ```
 

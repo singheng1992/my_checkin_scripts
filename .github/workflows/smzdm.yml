@@ -7,7 +7,7 @@ on:
 
 env:
   PROJECT_NAME: "smzdm"
-  SMZDM_COOKIE: ${{ secrets.SMZDM_COOKIE }}
+  SMZDM_COOKIES: ${{ secrets.SMZDM_COOKIES }}
 
 jobs:
   checkin:

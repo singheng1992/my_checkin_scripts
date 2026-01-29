@@ -1,4 +1,4 @@
-name: bilibili
+name: smzdm
 
 on:
   workflow_dispatch: # 手动触发
@@ -6,8 +6,8 @@ on:
     - cron: '0 0 * * *'
 
 env:
-  PROJECT_NAME: "bilibili"
-  BILIBILI_COOKIES: ${{ secrets.BILIBILI_COOKIES }}
+  PROJECT_NAME: "music163"
+  MUSIC163_COOKIES: ${{ secrets.MUSIC163_COOKIES }}
 
 jobs:
   checkin:

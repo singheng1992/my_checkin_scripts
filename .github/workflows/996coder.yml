@@ -1,4 +1,4 @@
-name: bilibili
+name: 996coder
 
 on:
   workflow_dispatch: # 手动触发
@@ -6,8 +6,8 @@ on:
     - cron: '0 0 * * *'
 
 env:
-  PROJECT_NAME: "bilibili"
-  BILIBILI_COOKIES: ${{ secrets.BILIBILI_COOKIES }}
+  PROJECT_NAME: "996coder"
+  NINENINESIX_CODER_ACCOUNTS: ${{ secrets.NINENINESIX_CODER_ACCOUNTS }}
 
 jobs:
   checkin:
