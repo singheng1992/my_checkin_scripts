@@ -135,7 +135,7 @@ def main():
         logger.info(f"账号 [{i}/{len(accounts)}]: {email}")
 
         try:
-            # 1. 登录获取 access_token
+            # 登录获取 access_token
             token = login(email, password)
             logger.info("登录成功")
 
@@ -146,42 +146,42 @@ def main():
             free_balance = user_info.get("free_balance", 0)
             logger.info(f"用户: {nickname}, 积分: {balance} (免费: {free_balance})")
 
-            # 2. 获取项目列表（取最后一个项目）
-            projects = get_projects(token)
-            if not projects:
-                logger.info("暂无项目，跳过签到任务")
-                success_count += 1
-                continue
+            # # 获取项目列表（取最后一个项目）
+            # projects = get_projects(token)
+            # if not projects:
+            #     logger.info("暂无项目，跳过签到任务")
+            #     success_count += 1
+            #     continue
 
-            last_project = projects[-1]
-            project_id = last_project.get("short_url_id")
-            project_name = last_project.get("name", "未命名")
-            logger.info(f"获取到项目: {project_name} (ID: {project_id})")
+            # last_project = projects[-1]
+            # project_id = last_project.get("short_url_id")
+            # project_name = last_project.get("name", "未命名")
+            # logger.info(f"获取到项目: {project_name} (ID: {project_id})")
 
-            # 3. 获取工作流信息，提取任务参数
-            flow_data = get_flow_info(token, project_id)
-            workflows = flow_data.get("workflows", [])
-            if not workflows:
-                logger.info("工作流为空，跳过签到任务")
-                success_count += 1
-                continue
+            # # 获取工作流信息，提取任务参数
+            # flow_data = get_flow_info(token, project_id)
+            # workflows = flow_data.get("workflows", [])
+            # if not workflows:
+            #     logger.info("工作流为空，跳过签到任务")
+            #     success_count += 1
+            #     continue
 
-            nodes = workflows[0].get("data", {}).get("nodes", [])
-            run_task = None
-            for node in nodes:
-                if node.get("data", {}).get("run_task"):
-                    run_task = node["data"]["run_task"]
-                    break
+            # nodes = workflows[0].get("data", {}).get("nodes", [])
+            # run_task = None
+            # for node in nodes:
+            #     if node.get("data", {}).get("run_task"):
+            #         run_task = node["data"]["run_task"]
+            #         break
 
-            if not run_task:
-                logger.info("未找到可执行任务，跳过签到任务")
-                success_count += 1
-                continue
+            # if not run_task:
+            #     logger.info("未找到可执行任务，跳过签到任务")
+            #     success_count += 1
+            #     continue
 
-            # 4. 执行任务
-            logger.info("开始执行生图任务...")
-            result = run_workflow(token, run_task)
-            logger.info(f"执行生图任务结果：{result}")
+            # # 执行任务
+            # logger.info("开始执行生图任务...")
+            # result = run_workflow(token, run_task)
+            # logger.info(f"执行生图任务结果：{result}")
 
             success_count += 1
         except Exception:
