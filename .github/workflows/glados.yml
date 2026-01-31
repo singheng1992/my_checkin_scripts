@@ -33,4 +33,4 @@ jobs:
 
       - name: 执行签到脚本
         run: |
-          cd $PROJECT_NAME && python main.py
+          python -m $PROJECT_NAME.main 

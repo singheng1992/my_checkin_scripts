@@ -12,6 +12,7 @@ import traceback
 from typing import Any, Dict, Optional
 
 import requests
+from utils.notify import XizhiNotifier
 
 # 配置日志
 logging.basicConfig(
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 # 环境变量
 ENV_COOKIES = "GLADOS_COOKIES"
+ENV_TUI_OPENID = "TUI_OPENID"
 # API 配置
 CHECKIN_URL = "https://glados.cloud/api/user/checkin"
 STATUS_URL = "https://glados.cloud/api/user/status"
@@ -116,7 +118,7 @@ class GladosClient:
         elif "Checkin Repeats!" in message:
             return "重复签到，明天再来"
         else:
-            return f"签到失败: {message}"
+            raise ValueError(f"签到失败: {message}")
 
     def run(self) -> None:
         """执行所有账号签到"""
@@ -145,6 +147,8 @@ class GladosClient:
                 logger.error(
                     f"账号 {idx}: 签到失败, 错误信息: {traceback.format_exc()}"
                 )
+                notifier = XizhiNotifier()
+                notifier.send("GLaDOS 签到失败", f"错误信息: {traceback.format_exc()}")
             finally:
                 logger.info("=" * 40)
 
