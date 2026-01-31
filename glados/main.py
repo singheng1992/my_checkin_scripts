@@ -148,7 +148,10 @@ class GladosClient:
                     f"账号 {idx}: 签到失败, 错误信息: {traceback.format_exc()}"
                 )
                 notifier = XizhiNotifier()
-                notifier.send("GLaDOS 签到失败", f"错误信息: {traceback.format_exc()}")
+                notifier.send(
+                    "GLaDOS 签到失败",
+                    f"账号 {idx}: 签到失败, 错误信息: {traceback.format_exc()}",
+                )
             finally:
                 logger.info("=" * 40)
 

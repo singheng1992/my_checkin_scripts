@@ -10,6 +10,7 @@ import sys
 import traceback
 
 import requests
+from utils.notify import XizhiNotifier
 
 # 配置日志
 logging.basicConfig(
@@ -105,6 +106,11 @@ class Music163Client:
             except Exception:
                 logger.error(
                     f"账号 {idx}: 签到失败, 错误信息: {traceback.format_exc()}"
+                )
+                notifier = XizhiNotifier()
+                notifier.send(
+                    "music163 签到失败",
+                    f"账号 {idx}: 签到失败, 错误信息: {traceback.format_exc()}",
                 )
             finally:
                 logger.info("=" * 40)
