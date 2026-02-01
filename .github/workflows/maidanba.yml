@@ -9,7 +9,7 @@ on:
 
 env:
   PROJECT_NAME: "maidanba"
-  GLADOS_COOKIES: ${{ secrets.MAIDANBA_ACCOUNTS }}
+  MAIDANBA_ACCOUNTS: ${{ secrets.MAIDANBA_ACCOUNTS }}
 
 jobs:
   checkin:
