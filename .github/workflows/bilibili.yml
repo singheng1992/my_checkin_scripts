@@ -8,6 +8,7 @@ on:
 env:
   PROJECT_NAME: "bilibili"
   BILIBILI_COOKIES: ${{ secrets.BILIBILI_COOKIES }}
+  XIZHI_KEY: ${{ secrets.XIZHI_KEY }}
 
 jobs:
   checkin:

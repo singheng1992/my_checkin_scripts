@@ -10,6 +10,7 @@ on:
 env:
   PROJECT_NAME: "glados"
   GLADOS_COOKIES: ${{ secrets.GLADOS_COOKIES }}
+  XIZHI_KEY: ${{ secrets.XIZHI_KEY }}
 
 jobs:
   checkin:

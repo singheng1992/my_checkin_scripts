@@ -10,6 +10,7 @@ on:
 env:
   PROJECT_NAME: "maidanba"
   MAIDANBA_ACCOUNTS: ${{ secrets.MAIDANBA_ACCOUNTS }}
+  XIZHI_KEY: ${{ secrets.XIZHI_KEY }}
 
 jobs:
   checkin:

@@ -8,6 +8,7 @@ on:
 env:
   PROJECT_NAME: "996coder"
   NINENINESIX_CODER_ACCOUNTS: ${{ secrets.NINENINESIX_CODER_ACCOUNTS }}
+  XIZHI_KEY: ${{ secrets.XIZHI_KEY }}
 
 jobs:
   checkin:

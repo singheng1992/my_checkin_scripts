@@ -8,6 +8,7 @@ on:
 env:
   PROJECT_NAME: "music163"
   MUSIC163_COOKIES: ${{ secrets.MUSIC163_COOKIES }}
+  XIZHI_KEY: ${{ secrets.XIZHI_KEY }}
 
 jobs:
   checkin:
