@@ -1,0 +1,36 @@
+name: maidanba
+
+on:
+  workflow_dispatch: # 手动触发
+  schedule: # 定时触发
+    - cron: '0 0 * * *'
+    # 每5分钟运行一次（测试用）
+    # - cron: '*/5 * * * *'
+
+env:
+  PROJECT_NAME: "maidanba"
+  GLADOS_COOKIES: ${{ secrets.GLADOS_COOKIES }}
+
+jobs:
+  checkin:
+    name: 执行签到脚本
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v6.0.2
+
+      - name: 设置Python环境
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.11"
+          pip-install: "requests"
+
+      - name: 查看环境信息
+        run: |
+          echo -e "操作系统版本:\n$(cat /etc/os-release)"
+          echo -e "Python版本:\n$(python --version)"
+          echo -e "Pip列表:\n$(pip list)"
+
+      - name: 执行签到脚本
+        run: |
+          python -m $PROJECT_NAME.main 
