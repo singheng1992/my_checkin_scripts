@@ -12,11 +12,10 @@ import traceback
 from typing import Any, Dict, Optional
 
 import requests
+import ssl
 import urllib3
 from utils.notify import XizhiNotifier
 
-# 禁用 SSL 警告
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # 配置日志
 logging.basicConfig(
@@ -48,6 +47,15 @@ HEADERS = {
 }
 
 
+# 在文件开头添加
+class SSLContextAdapter(requests.adapters.HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.create_default_context()
+        ctx.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
+        kwargs["ssl_context"] = ctx
+        return super().init_poolmanager(*args, **kwargs)
+
+
 class MaidanbaClient:
     """买单吧签到客户端"""
 
@@ -62,8 +70,7 @@ class MaidanbaClient:
 
         if not raw_accounts:
             logger.error(
-                f"请设置环境变量:\n"
-                f'  {ENV_ACCOUNTS}="cookie1#token1||cookie2#token2"'
+                f'请设置环境变量:\n  {ENV_ACCOUNTS}="cookie1#token1||cookie2#token2"'
             )
             sys.exit(1)
 
@@ -90,11 +97,12 @@ class MaidanbaClient:
         url = f"{SIGN_DATA_URL}?token={token}"
         payload = {"taskShowCd": "00", "taskId": self.task_id}
 
-        response = requests.post(
+        session = requests.Session()
+        session.mount("https://", SSLContextAdapter())
+        response = session.post(
             url,
             headers={**HEADERS, "Cookie": cookie},
             data=json.dumps(payload),
-            verify=False,
         )
         data = response.json()
 
@@ -125,7 +133,6 @@ class MaidanbaClient:
             url,
             headers={**HEADERS, "Cookie": cookie},
             data=json.dumps(payload),
-            verify=False,
         )
         data = response.json()
 
