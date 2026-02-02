@@ -110,10 +110,8 @@ class BilibiliClient:
         data = self._make_request(USER_INFO_URL)
         if data and data.get("code") == 0:
             return data.get("data")
-        logger.warning(
-            f"获取用户信息失败: {data.get('message') if data else '网络错误'}"
-        )
-        return None
+        else:
+            raise ValueError(f"获取用户信息失败: {data.get('message', '网络错误')}")
 
     def get_dynamic_videos(self) -> list[str]:
         """获取动态视频列表
