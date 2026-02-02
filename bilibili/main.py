@@ -94,16 +94,12 @@ class BilibiliClient:
         Returns:
             响应 JSON 数据
         """
-        try:
-            if method.upper() == "GET":
-                res = requests.get(url, headers=self.headers, params=data)
-            else:
-                res = requests.post(url, headers=self.headers, data=data)
-            res.raise_for_status()
-            return res.json()
-        except Exception as e:
-            logger.error(f"请求异常: {e}")
-            return {}
+        if method.upper() == "GET":
+            res = requests.get(url, headers=self.headers, params=data)
+        else:
+            res = requests.post(url, headers=self.headers, data=data)
+        res.raise_for_status()
+        return res.json()
 
     def get_user_info(self) -> Union[dict[str, Any], None]:
         """获取用户信息
