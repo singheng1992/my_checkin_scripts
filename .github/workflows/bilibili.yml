@@ -2,8 +2,8 @@ name: bilibili
 
 on:
   workflow_dispatch: # 手动触发
-  schedule: # 定时触发
-    - cron: '0 0 * * *'
+  # schedule: # 定时触发
+  #   - cron: '0 0 * * *'
 
 env:
   PROJECT_NAME: "bilibili"
