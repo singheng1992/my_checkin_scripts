@@ -24,11 +24,18 @@ logger = logging.getLogger(__name__)
 ENV_ACCOUNTS = "MULAN_ACCOUNTS"
 
 # API 配置
-LOGIN_URL = "https://api3.mulan.pro/api/auth/sign-in"
-USER_INFO_URL = "https://api3.mulan.pro/api/user/protected/userinfo/fresh"
-PROJECTS_URL = "https://api3.mulan.pro/api/studio_manager/projects/recents"
-FLOW_INFO_URL = "https://api3.mulan.pro/api/studio_manager/flow/{}/"
-WORKFLOW_RUN_URL = "https://api3.mulan.pro/api/manage/v1/workflows/run"
+# LOGIN_URL = "https://api3.mulan.pro/api/auth/sign-in"
+# USER_INFO_URL = "https://api3.mulan.pro/api/user/protected/userinfo/fresh"
+# PROJECTS_URL = "https://api3.mulan.pro/api/studio_manager/projects/recents"
+# FLOW_INFO_URL = "https://api3.mulan.pro/api/studio_manager/flow/{}/"
+# WORKFLOW_RUN_URL = "https://api3.mulan.pro/api/manage/v1/workflows/run"
+
+# 0309更新接口
+LOGIN_URL = "https://api3.mulan.pro/auth/sign-in"
+USER_INFO_URL = "https://api3.mulan.pro/user/protected/userinfo/fresh"
+PROJECTS_URL = "https://api3.mulan.pro/studio_manager/projects/recents"
+FLOW_INFO_URL = "https://api3.mulan.pro/studio_manager/flow/{}/"
+WORKFLOW_RUN_URL = "https://api3.mulan.pro/manage/v1/workflows/run"
 
 # 请求头
 HEADERS = {"Content-Type": "application/json"}

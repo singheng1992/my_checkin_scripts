@@ -7,5 +7,6 @@ AI图片编辑网站：https://mulan.pro，定时签到脚本
 ## 本地调试
 ```
 export MULAN_ACCOUNTS="email1:password1||email2:password2"
-python main.py
+export XIZHI_KEY="your_xizhi_key"
+uv run python -m mulan.main
 ```
