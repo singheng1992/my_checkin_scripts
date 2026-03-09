@@ -1,6 +1,6 @@
 # SparkAI 签到
 
-https://ai.sparkaigf.com/
+https://ai.sparkaigf.com，定时签到脚本
 
 ## 环境变量
 
@@ -22,7 +22,9 @@ SPARKAIGF_ACCOUNTS="user1:pass1||user2:pass2"
 ## 本地运行
 
 ```bash
-SPARKAIGF_ACCOUNTS="username:password" python -m sparkaigf.main
+export SPARKAIGF_ACCOUNTS="username:password"
+export XIZHI_KEY="your_xizhi_key"
+uv run python -m sparkaigf.main
 ```
 
 ## API 接口

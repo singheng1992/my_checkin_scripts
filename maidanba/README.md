@@ -21,7 +21,8 @@
 
 ```bash
 export MAIDANBA_ACCOUNTS="JSESSIONID=xxx#token值"
-python -m maidanba.main
+export XIZHI_KEY="your_xizhi_key"
+uv run python -m maidanba.main
 ```
 
 ## 多账号配置

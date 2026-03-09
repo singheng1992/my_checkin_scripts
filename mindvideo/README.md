@@ -27,7 +27,8 @@ email@example.com:md5_password||email2@example.com:md5_password2
 
 ```bash
 export MINDVIDEO_ACCOUNTS="your_email:your_md5_password"
-python -m mindvideo.main
+export XIZHI_KEY="your_xizhi_key"
+uv run python -m mindvideo.main
 ```
 
 ## GitHub Actions

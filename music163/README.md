@@ -7,5 +7,6 @@
 ## 本地调试
 ```
 export MUSIC163_COOKIES="c1||c2"
-python main.py
+export XIZHI_KEY="your_xizhi_key"
+uv run python -m music163.main
 ```

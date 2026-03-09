@@ -7,7 +7,8 @@
 ## 本地调试
 ```
 export GLADOS_COOKIES="c1||c2"
-python main.py
+export XIZHI_KEY="your_xizhi_key"
+uv run python -m glados.main
 ```
 
 ## 参考
