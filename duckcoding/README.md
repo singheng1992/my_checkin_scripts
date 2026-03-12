@@ -1,5 +1,5 @@
 # 使用说明
-duckcoding：https://duckcoding.com，定时签到脚本
+duckcoding定时签到脚本：https://duckcoding.com
 
 ## 环境变量
 - `DUCKCODING_ACCOUNTS`：多个账号密码，用 `||` 分隔，格式为 `email:password`，例如：email1:password1||email2:password2"

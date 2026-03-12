@@ -1,6 +1,5 @@
 # SparkAI 签到
-
-https://ai.sparkaigf.com，定时签到脚本
+SparkAI定时签到脚本：https://ai.sparkaigf.com
 
 ## 环境变量
 

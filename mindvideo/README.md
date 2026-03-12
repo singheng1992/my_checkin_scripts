@@ -1,6 +1,5 @@
 # MindVideo 签到脚本
-
-自动签到 [MindVideo](https://www.mindvideo.ai/) 平台。
+mindvideo定时签到脚本：https://www.mindvideo.ai
 
 ## 功能特性
 

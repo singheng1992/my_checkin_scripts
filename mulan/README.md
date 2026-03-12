@@ -1,5 +1,6 @@
 # 使用说明
-AI图片编辑网站：https://mulan.pro，定时签到脚本
+
+图片编辑网站定时签到脚本：https://mulan.pro
 
 ## 环境变量
 - `MULAN_ACCOUNTS`：多个账号密码，用 `||` 分隔，格式为 `email:password`，例如：email1:password1||email2:password2"
